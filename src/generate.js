@@ -66,11 +66,11 @@ function cap(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function statBlock(base) {
-  const maxHp = Math.floor(((2 * base.hp + 31) * 50) / 100 + 50 + 10);
+function statBlock(base, level = 50) {
+  const maxHp = Math.floor(((2 * base.hp + 31) * level) / 100 + level + 10);
   const out = { maxHp };
   for (const key of ['atk', 'def', 'spa', 'spd', 'spe']) {
-    out[key] = Math.floor(((2 * base[key] + 31) * 50) / 100 + 5);
+    out[key] = Math.floor(((2 * base[key] + 31) * level) / 100 + 5);
   }
   return out;
 }
@@ -210,13 +210,14 @@ export function describeEffects(effects, chanceOnly = false) {
   return text.charAt(0).toUpperCase() + text.slice(1) + '.';
 }
 
-function makeCreature(rng, type, usedNames, side, index) {
+function makeCreature(rng, type, usedNames, side, index, options = {}) {
   const typeData = TYPES[type];
   const archetypeKey = rng.weighted([
     ['striker', 22], ['caster', 22], ['guardian', 20], ['trickster', 18], ['balanced', 18],
   ]);
   const arch = ARCHETYPES[archetypeKey];
   const body = rng.weighted(BODY_BY_TYPE[type]);
+  const level = options.level ?? 50;
 
   let name = '';
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -232,20 +233,21 @@ function makeCreature(rng, type, usedNames, side, index) {
     const raw = key === 'hp' ? 62 + rng.float(0, 52) : 54 + rng.float(0, 68);
     base[key] = Math.round(clamp(raw * arch[key] * rng.float(0.95, 1.08), 38, 156));
   }
-  const stats = statBlock(base);
+  const stats = statBlock(base, level);
   const ability = makeAbility(rng, type);
   if (ability.key === 'speed') stats.spe = Math.round(stats.spe * 1.15);
   if (ability.key === 'barrierStart') stats.startBarrier = Math.round(stats.maxHp * 0.18);
 
+  // Four moves, one from each group plus a flex pick. The physical and special
+  // picks guarantee every creature can attack, while the flex slot keeps sets varied.
+  const flexGroup = rng.weighted([['physical', 44], ['special', 44], ['status', 12]]);
+  const moveGroups = [...GROUP_ORDER, flexGroup];
   const usedMoveNames = new Set();
-  const moves = [];
-  for (const group of GROUP_ORDER) {
-    for (let i = 0; i < 2; i++) {
-      const move = makeMove(rng, type, group, i, usedMoveNames);
-      move.pp = move.maxPp;
-      moves.push(move);
-    }
-  }
+  const moves = moveGroups.map((group, i) => {
+    const move = makeMove(rng, type, group, i, usedMoveNames);
+    move.pp = move.maxPp;
+    return move;
+  });
 
   return {
     id: `${side}-${index}-${rng.int(1000, 9999)}`,
@@ -257,7 +259,7 @@ function makeCreature(rng, type, usedNames, side, index) {
     archetype: archetypeKey,
     archetypeLabel: arch.label,
     body,
-    level: 50,
+    level,
     stats,
     base,
     hp: stats.maxHp,
@@ -277,7 +279,9 @@ function makeCreature(rng, type, usedNames, side, index) {
 export function generateTeam(rng, side, count = 3, options = {}) {
   const types = rng.shuffle(TYPE_ORDER).slice(0, count);
   const usedNames = new Set();
-  return types.map((type, i) => makeCreature(rng, type, usedNames, side, i));
+  return types.map((type, i) => makeCreature(rng, type, usedNames, side, i, {
+    level: options.levels?.[i] ?? options.level ?? 50,
+  }));
 }
 
 export function generateRoom(rng) {
@@ -312,8 +316,10 @@ export function generateWarden(rng) {
 export function generateRun(seed) {
   const rng = new RNG(seed);
   const room = generateRoom(rng.child('room'));
-  const playerTeam = generateTeam(rng.child('player'), 'player', 3);
-  const enemyTeam = generateTeam(rng.child('enemy'), 'enemy', 3);
+  const playerTeam = generateTeam(rng.child('player'), 'player', 3, { levels: [50, 50, 50] });
+  // A gentle ramp: the warden's first two creatures are a few levels below the
+  // player, and the ace is a full-strength level 50 closer.
+  const enemyTeam = generateTeam(rng.child('enemy'), 'enemy', 3, { levels: [42, 46, 50] });
   const warden = generateWarden(rng.child('warden'));
   return {
     seed,

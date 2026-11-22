@@ -25,7 +25,8 @@ export function calcDamage(attacker, defender, move, rng = Math.random) {
   const physical = move.group === 'physical';
   const atk = effectiveStat(attacker, physical ? 'atk' : 'spa');
   const def = effectiveStat(defender, physical ? 'def' : 'spd');
-  let base = (((2 * 50) / 5 + 2) * move.power * (atk / def)) / 50 + 2;
+  const level = attacker.level || 50;
+  let base = (((2 * level) / 5 + 2) * move.power * (atk / def)) / 50 + 2;
   const mult = typeMultiplier(move.type, defender.type);
   base *= mult;
   if (physical && attacker.status === 'burn') base *= 0.5;
@@ -48,7 +49,8 @@ export function estimateDamage(attacker, defender, move) {
   const physical = move.group === 'physical';
   const atk = effectiveStat(attacker, physical ? 'atk' : 'spa');
   const def = effectiveStat(defender, physical ? 'def' : 'spd');
-  let base = (((2 * 50) / 5 + 2) * move.power * (atk / def)) / 50 + 2;
+  const level = attacker.level || 50;
+  let base = (((2 * level) / 5 + 2) * move.power * (atk / def)) / 50 + 2;
   base *= typeMultiplier(move.type, defender.type);
   if (physical && attacker.status === 'burn') base *= 0.5;
   if (attacker.ability.key === 'typeDamage' && move.type === attacker.type) base *= 1.2;

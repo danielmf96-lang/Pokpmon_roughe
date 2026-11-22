@@ -578,8 +578,9 @@ export function createRoom(scene, config) {
   return { group, update, dispose, theme, portal, crystals };
 }
 
-export function createSelectStage(scene, config) {
+export function createSelectStage(scene, config, options = {}) {
   const theme = config.theme;
+  const compact = Boolean(options.compact);
   const group = new THREE.Group();
   scene.add(group);
   const stoneMat = makeStoneMat(theme.stone);
@@ -591,10 +592,12 @@ export function createSelectStage(scene, config) {
     color: theme.glow, emissive: theme.glow, emissiveIntensity: 1.5, roughness: 0.3,
   });
   const pedestals = [];
-  const positions = [-4.6, 0, 4.6];
+  const positions = compact ? [-2.55, 0, 2.55] : [-4.6, 0, 4.6];
+  const pedestalScale = compact ? 0.72 : 1;
   for (let i = 0; i < 3; i++) {
     const g = new THREE.Group();
     g.position.set(positions[i], 0, -1.6);
+    g.scale.set(pedestalScale, 1, pedestalScale);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.35, 0.5, 8), stoneMat);
     base.position.y = 0.25;
     g.add(base);

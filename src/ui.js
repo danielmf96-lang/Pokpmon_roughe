@@ -166,7 +166,7 @@ export function teamCardMarkup(creature, index) {
         <span class="tc-arch">${creature.archetypeLabel}</span>
       </div>
       <div class="tc-body">
-        <div class="tc-title"><h3>${creature.name}</h3><span>LV. 50</span></div>
+        <div class="tc-title"><h3>${creature.name}</h3><span>LV. ${creature.level}</span></div>
         <div class="tc-species">${creature.species}</div>
         <div class="tc-ability" style="--tc:${type.color}">
           <span>${creature.ability.name}</span>
@@ -207,7 +207,7 @@ export function panelMarkup(creature, team, activeIndex, isEnemy) {
     <div class="combatant-head">
       <span class="type-chip" style="--t:${type.color}">${type.name}</span>
       <span class="combatant-name">${creature.name}</span>
-      <span class="level">LV. 50${isEnemy ? ' · WARDEN' : ''}</span>
+      <span class="level">LV. ${creature.level}${isEnemy ? '<span class="warden-tag"> · WARDEN</span>' : ''}</span>
     </div>
     <div class="hp-track">
       <div class="hp-ghost" style="width:${hpPercent}%"></div>
@@ -291,14 +291,15 @@ export function codexMarkup(run) {
     <div class="codex-section">
       <h4>How to Duel</h4>
       <div class="controls-grid">
-        <b>1 / 2</b><span>Use the first or second move in the selected group</span>
-        <b>Q / E</b><span>Cycle Physical, Special and Status move groups</span>
-        <b>B</b><span>Open the swap menu (costs your action)</span>
-        <b>C</b><span>Open this codex</span>
-        <b>M</b><span>Toggle sound</span>
+        <b>Tap / Click</b><span>Use a move card, swap creature, or open the codex</span>
+        <b>1 / 2</b><span>Keyboard: use the first or second move in the selected group</span>
+        <b>Q / E</b><span>Keyboard: cycle Physical, Special and Status groups</span>
+        <b>B</b><span>Keyboard: open the swap menu (costs your action)</span>
+        <b>C</b><span>Keyboard: open this codex</span>
+        <b>M</b><span>Keyboard: toggle sound</span>
       </div>
       <p>Physical moves scale with Attack and Defense. Special moves scale with Spirit and Ward. Status moves apply buffs, barriers, healing or afflictions. A creature may only carry one affliction at a time.</p>
-      <p>Defeat all three of the Warden's creatures to clear the rift. Fainted creatures stay down until the run ends.</p>
+      <p>Every creature carries four generated moves across the three groups, and always has at least one damaging move. Defeat all three of the Warden's creatures to clear the rift. Fainted creatures stay down until the run ends.</p>
       <h4 style="margin-top:16px">Your Trio</h4>
       <div class="roster-list">${roster}</div>
     </div>`;

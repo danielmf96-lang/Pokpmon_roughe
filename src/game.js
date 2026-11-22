@@ -18,10 +18,20 @@ const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const easeOutCubic = (p) => 1 - Math.pow(1 - p, 3);
 
-const PLAYER_SPOT = new THREE.Vector3(-3.35, 0, 2.55);
-const ENEMY_SPOT = new THREE.Vector3(3.35, 0, -2.0);
+const PLAYER_SPOT = new THREE.Vector3(3.35, 0, 2.55);
+const ENEMY_SPOT = new THREE.Vector3(-3.35, 0, -2.0);
 const PLAYER_ROT = Math.atan2(ENEMY_SPOT.x - PLAYER_SPOT.x, ENEMY_SPOT.z - PLAYER_SPOT.z);
 const ENEMY_ROT = Math.atan2(PLAYER_SPOT.x - ENEMY_SPOT.x, PLAYER_SPOT.z - ENEMY_SPOT.z);
+const PORTRAIT_PLAYER_SPOT = new THREE.Vector3(2.2, 0, 3.0);
+const PORTRAIT_ENEMY_SPOT = new THREE.Vector3(-2.2, 0, -2.3);
+const PORTRAIT_PLAYER_ROT = Math.atan2(
+  PORTRAIT_ENEMY_SPOT.x - PORTRAIT_PLAYER_SPOT.x,
+  PORTRAIT_ENEMY_SPOT.z - PORTRAIT_PLAYER_SPOT.z,
+);
+const PORTRAIT_ENEMY_ROT = Math.atan2(
+  PORTRAIT_PLAYER_SPOT.x - PORTRAIT_ENEMY_SPOT.x,
+  PORTRAIT_PLAYER_SPOT.z - PORTRAIT_ENEMY_SPOT.z,
+);
 
 export class RiftGame {
   constructor() {
@@ -131,10 +141,12 @@ export class RiftGame {
     this.hintTimer = null;
     this.endTimer = null;
 
-    this.PLAYER_SPOT = PLAYER_SPOT;
-    this.ENEMY_SPOT = ENEMY_SPOT;
+    this.PLAYER_SPOT = PLAYER_SPOT.clone();
+    this.ENEMY_SPOT = ENEMY_SPOT.clone();
     this.PLAYER_ROT = PLAYER_ROT;
     this.ENEMY_ROT = ENEMY_ROT;
+    this.isPortrait = false;
+    this.layoutReady = false;
 
     this.bindEvents();
     this.resize();
@@ -258,14 +270,14 @@ export class RiftGame {
     this.scene.fog = new THREE.FogExp2(this.run.room.theme.fog, this.run.room.fogDensity);
     this.scene.background = new THREE.Color(this.run.room.theme.bg);
     this.room = createRoom(this.scene, this.run.room);
-    this.stage = createSelectStage(this.scene, this.run.room);
+    this.stage = createSelectStage(this.scene, this.run.room, { compact: this.isPortrait });
 
     this.playerModels = this.run.playerTeam.map((creature, index) => {
       const model = createCreatureModel(creature);
       const pedestal = this.stage.pedestals[index];
       model.root.position.set(pedestal.group.position.x, 0.79, pedestal.group.position.z);
       model.root.rotation.y = -0.38 + (index - 1) * 0.1;
-      model.root.scale.setScalar(creature.scale);
+      model.root.scale.setScalar(this.creatureScale(creature));
       this.scene.add(model.root);
       this.models.set(creature.id, model);
       this.homes.set(creature.id, model.root.position.clone());
@@ -311,7 +323,7 @@ export class RiftGame {
     this.dom.deployBtn.disabled = false;
     this.playerModels.forEach((model, i) => {
       const creature = this.run.playerTeam[i];
-      const target = creature.scale * (i === index ? 1.16 : 1);
+      const target = this.creatureScale(creature, i === index ? 1.16 : 1);
       this.tween(0.35, (p) => {
         const current = model.root.scale.x;
         model.root.scale.setScalar(current + (target - current) * Math.min(1, p * 0.22));
@@ -365,7 +377,10 @@ export class RiftGame {
     this.log(`${this.run.warden.name} accepts your challenge.`, 'enemy');
     this.log(`Go, ${this.pActive.name}!`, 'player');
     this.showBanner('RIFT DUEL', this.run.room.name, this.run.warden.title, 2400);
-    this.showHint('<b>Pick a move group</b>, then a move. <b>Q/E</b> cycles groups · <b>B</b> swaps creatures · <b>C</b> opens the codex.');
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    this.showHint(touch
+      ? '<b>Tap a group</b>, then a move. <b>SWAP</b> rotates creatures · <b>CODEX</b> explains the rules.'
+      : '<b>Pick a move group</b>, then a move. <b>Q/E</b> cycles groups · <b>B</b> swaps creatures · <b>C</b> opens the codex.');
     this.sendOutAnim(this.playerModels[lead], this.pActive);
     setTimeout(() => {
       if (this.state !== 'battle') return;
@@ -390,11 +405,15 @@ export class RiftGame {
     });
   }
 
+  creatureScale(creature, boost = 1) {
+    return creature.scale * boost * (this.isPortrait ? 1.22 : 1);
+  }
+
   placeModel(model, position, rotation, visible = true) {
     if (!model) return;
     model.root.position.copy(position);
     model.root.rotation.set(0, rotation, 0);
-    model.root.scale.setScalar(model.creature.scale);
+    model.root.scale.setScalar(this.creatureScale(model.creature));
     model.root.visible = visible;
     model.setOpacity(1);
     this.homes.set(model.creature.id, position.clone());
@@ -404,7 +423,7 @@ export class RiftGame {
     if (!model) return;
     model.root.position.copy(position);
     model.root.rotation.set(0, rotation, 0);
-    model.root.scale.setScalar(creature.scale);
+    model.root.scale.setScalar(this.creatureScale(creature));
     model.root.visible = visible;
     model.setOpacity(1);
     this.homes.set(creature.id, position.clone());
@@ -459,6 +478,7 @@ export class RiftGame {
       .map((move, index) => ({ move, index }))
       .filter(({ move }) => move.group === this.currentGroup);
     const disabled = this.busy || this.state !== 'battle';
+    this.dom.moveGrid.classList.toggle('single', moves.length === 1);
     if (!moves.length) {
       this.dom.moveGrid.innerHTML = '<div style="padding:20px;color:var(--muted-dim);font-size:10px;letter-spacing:.1em">No moves in this group.</div>';
     } else {
@@ -517,22 +537,47 @@ export class RiftGame {
 
   /* ══════════════ CAMERA / LOOP ══════════════ */
   updateCameraRig() {
+    const portrait = this.isPortrait;
     if (this.state === 'title') {
-      this.camRig.pos.set(
-        7.1 + Math.sin(this.time * 0.09) * 0.5,
-        4.6 + Math.sin(this.time * 0.13) * 0.1,
-        11.4 + Math.cos(this.time * 0.07) * 0.22,
-      );
-      this.camRig.target.set(0.6, 1.78, 0);
+      if (portrait) {
+        this.camRig.pos.set(
+          6.6 + Math.sin(this.time * 0.09) * 0.4,
+          4.8 + Math.sin(this.time * 0.13) * 0.1,
+          11.2 + Math.cos(this.time * 0.07) * 0.18,
+        );
+        this.camRig.target.set(1.2, 1.6, -0.5);
+      } else {
+        this.camRig.pos.set(
+          7.1 + Math.sin(this.time * 0.09) * 0.5,
+          4.6 + Math.sin(this.time * 0.13) * 0.1,
+          11.4 + Math.cos(this.time * 0.07) * 0.22,
+        );
+        this.camRig.target.set(0.6, 1.78, 0);
+      }
     } else if (this.state === 'select') {
-      this.camRig.pos.set(Math.sin(this.time * 0.18) * 0.1, 3.85, 9.9);
-      this.camRig.target.set(0, 1.38, -2.0);
+      if (portrait) {
+        this.camRig.pos.set(Math.sin(this.time * 0.18) * 0.08, 4.4, 10.6);
+        this.camRig.target.set(0, 1.15, -1.6);
+      } else {
+        this.camRig.pos.set(Math.sin(this.time * 0.18) * 0.1, 3.85, 9.9);
+        this.camRig.target.set(0, 1.38, -2.0);
+      }
     } else if (this.state === 'battle') {
-      this.camRig.pos.set(0.7 + Math.sin(this.time * 0.24) * 0.13, 5.2 + Math.sin(this.time * 0.31) * 0.05, 13.4);
-      this.camRig.target.set(0, 1.78, -0.4);
+      if (portrait) {
+        this.camRig.pos.set(0.2 + Math.sin(this.time * 0.24) * 0.1, 5.0 + Math.sin(this.time * 0.31) * 0.04, 11.3);
+        this.camRig.target.set(0.7, 1.45, -0.1);
+      } else {
+        this.camRig.pos.set(0.7 + Math.sin(this.time * 0.24) * 0.13, 5.2 + Math.sin(this.time * 0.31) * 0.05, 13.4);
+        this.camRig.target.set(0, 1.28, -0.4);
+      }
     } else if (this.state === 'end') {
-      this.camRig.pos.set(1.2, 4.8, 14.2);
-      this.camRig.target.set(0, 1.9, 0);
+      if (portrait) {
+        this.camRig.pos.set(0.8, 5.2, 11.5);
+        this.camRig.target.set(0, 1.7, 0);
+      } else {
+        this.camRig.pos.set(1.2, 4.8, 14.2);
+        this.camRig.target.set(0, 1.9, 0);
+      }
     }
   }
 
@@ -568,6 +613,58 @@ export class RiftGame {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.updateLayout();
+  }
+
+  updateLayout() {
+    const portrait = window.innerHeight > window.innerWidth * 1.08;
+    const changed = this.layoutReady && portrait !== this.isPortrait;
+    this.isPortrait = portrait;
+    this.layoutReady = true;
+
+    const fov = portrait ? 68 : 42;
+    if (this.camera.fov !== fov) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
+
+    const player = portrait ? PORTRAIT_PLAYER_SPOT : PLAYER_SPOT;
+    const enemy = portrait ? PORTRAIT_ENEMY_SPOT : ENEMY_SPOT;
+    this.PLAYER_SPOT.copy(player);
+    this.ENEMY_SPOT.copy(enemy);
+    this.PLAYER_ROT = portrait ? PORTRAIT_PLAYER_ROT : PLAYER_ROT;
+    this.ENEMY_ROT = portrait ? PORTRAIT_ENEMY_ROT : ENEMY_ROT;
+
+    if (!changed) return;
+
+    if (this.state === 'select' && this.run) {
+      if (this.stage) this.stage.dispose();
+      this.stage = createSelectStage(this.scene, this.run.room, { compact: portrait });
+      this.playerModels.forEach((model, index) => {
+        const creature = this.run.playerTeam[index];
+        if (!creature) return;
+        const pedestal = this.stage.pedestals[index];
+        model.root.position.set(pedestal.group.position.x, 0.79, pedestal.group.position.z);
+        model.root.scale.setScalar(this.creatureScale(creature, index === this.selectedLead ? 1.16 : 1));
+        this.homes.set(creature.id, model.root.position.clone());
+      });
+      if (this.stage) {
+        this.stage.pedestals.forEach((pedestal, index) => {
+          pedestal.selected = index === this.selectedLead;
+        });
+      }
+    }
+
+    if (this.state === 'battle' && this.battle) {
+      const playerModel = this.playerModels[this.battle.playerActive];
+      const enemyModel = this.enemyModels[this.battle.enemyActive];
+      if (playerModel && playerModel.root.visible) {
+        this.placeModel(playerModel, this.PLAYER_SPOT, this.PLAYER_ROT, true);
+      }
+      if (enemyModel && enemyModel.root.visible) {
+        this.placeModel(enemyModel, this.ENEMY_SPOT, this.ENEMY_ROT, true);
+      }
+    }
   }
 
   /* ══════════════ EVENTS ══════════════ */
@@ -615,6 +712,12 @@ export class RiftGame {
     this.dom.muteBtn.addEventListener('click', () => this.toggleMute());
     this.dom.hintClose.addEventListener('click', () => this.hideHint());
     this.dom.switchCancel.addEventListener('click', () => this.closeSwitch());
+    this.dom.switchModal.addEventListener('click', (event) => {
+      if (event.target === this.dom.switchModal) this.closeSwitch();
+    });
+    this.dom.codexModal.addEventListener('click', (event) => {
+      if (event.target === this.dom.codexModal) this.closeCodex();
+    });
     this.dom.switchGrid.addEventListener('click', (event) => {
       const option = event.target.closest('.switch-option');
       if (!option) return;

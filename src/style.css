@@ -34,6 +34,8 @@ body {
   font-family: var(--ui);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -47,6 +49,25 @@ input {
 
 button {
   color: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primary-btn:active:not(:disabled),
+.ghost-btn:active,
+.tool-btn:active:not(:disabled),
+.group-tab:active,
+.move-card:active:not(:disabled),
+.switch-option:active,
+.close-btn:active,
+.link-btn:active,
+.icon-btn:active {
+  transform: scale(0.97);
+  filter: brightness(0.92);
+}
+
+.team-card:active {
+  filter: brightness(0.94);
 }
 
 #app {
@@ -594,6 +615,15 @@ kbd {
   width: 100%;
   max-width: 1120px;
   margin: auto auto 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.team-cards::-webkit-scrollbar,
+.select-screen::-webkit-scrollbar,
+.title-inner::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar {
+  display: none;
 }
 
 .team-card {
@@ -1191,7 +1221,7 @@ kbd {
 #dock {
   position: fixed;
   left: 50%;
-  bottom: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 30;
   width: min(1120px, calc(100vw - 26px));
@@ -1343,6 +1373,10 @@ kbd {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.move-grid.single {
+  grid-template-columns: 1fr;
 }
 
 .move-card {
@@ -1710,7 +1744,9 @@ kbd {
 .modal-card {
   width: min(900px, 100%);
   max-height: 88vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 22px;
   background: linear-gradient(180deg, rgba(13, 18, 27, 0.99), rgba(6, 9, 14, 0.99));
   border: 1px solid rgba(242, 212, 146, 0.2);
@@ -1724,6 +1760,7 @@ kbd {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 18px;
+  flex-shrink: 0;
 }
 
 .modal-kicker {
@@ -1766,6 +1803,8 @@ kbd {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .switch-option {
@@ -1848,6 +1887,7 @@ kbd {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
   color: var(--muted-dim);
   font-size: 9px;
   letter-spacing: 0.06em;
@@ -1861,6 +1901,9 @@ kbd {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
   gap: 26px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .codex-section h4 {
@@ -2213,7 +2256,8 @@ kbd {
     margin-top: 18px;
   }
   .select-screen {
-    padding: 14px 12px 10px;
+    padding: max(14px, env(safe-area-inset-top, 0px)) 12px max(10px, env(safe-area-inset-bottom, 0px));
+    justify-content: flex-start;
   }
   .select-head h2 {
     font-size: 34px;
@@ -2222,18 +2266,30 @@ kbd {
     font-size: 9.5px;
   }
   .team-cards {
-    grid-template-columns: repeat(3, 84vw);
+    grid-template-columns: repeat(3, 86vw);
     gap: 10px;
-    margin-top: 14px;
+    margin-top: auto;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+  }
+  .team-card {
+    scroll-snap-align: center;
+  }
+  .team-card.selected {
+    transform: translateY(-4px);
   }
   .tc-art {
-    height: 112px;
+    height: 100px;
   }
   .select-foot {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
     margin-top: 10px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .warden-preview,
   .select-hint {
@@ -2241,13 +2297,14 @@ kbd {
   }
   .select-foot .primary-btn {
     width: 100%;
+    min-height: 48px;
   }
   .hud-top {
     gap: 6px;
-    padding: 7px 8px;
+    padding: calc(7px + env(safe-area-inset-top, 0px)) 8px 7px;
   }
   .combatant {
-    width: 47vw;
+    width: calc(50vw - 14px);
     padding: 7px 8px 6px;
   }
   .combatant-name {
@@ -2280,10 +2337,30 @@ kbd {
   .duel-info {
     display: none;
   }
+  .battle-log {
+    display: flex;
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 236px);
+    width: auto;
+    max-height: 42px;
+    justify-content: flex-end;
+    padding: 5px 8px;
+    background: rgba(5, 8, 13, 0.72);
+    border-left: 1px solid rgba(242, 212, 146, 0.3);
+    backdrop-filter: blur(8px);
+    mask-image: none;
+    font-size: 8.5px;
+    line-height: 1.3;
+  }
+  .battle-log .log-line:not(:nth-last-child(-n+3)) {
+    display: none;
+  }
   #dock {
-    bottom: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom, 0px));
     width: calc(100vw - 12px);
-    padding: 8px 8px 6px;
+    padding: 8px 8px 8px;
   }
   .dock-title {
     font-size: 7.5px;
@@ -2322,6 +2399,9 @@ kbd {
   .move-grid {
     gap: 5px;
   }
+  .move-grid.single {
+    grid-template-columns: 1fr;
+  }
   .move-card {
     min-height: 78px;
     padding: 7px 8px;
@@ -2340,7 +2420,7 @@ kbd {
     display: none;
   }
   #hintBar {
-    bottom: 218px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 286px);
     font-size: 8.5px;
   }
   .switch-grid {
@@ -2403,6 +2483,100 @@ kbd {
   }
   .team-cards {
     margin-top: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .primary-btn {
+    min-height: 48px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .ghost-btn {
+    min-height: 44px;
+  }
+  .link-btn {
+    min-height: 40px;
+  }
+  .tool-btn {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 9px;
+  }
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .group-tab {
+    min-height: 44px;
+  }
+  .move-card {
+    min-height: 84px;
+  }
+  .close-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .switch-option {
+    min-height: 72px;
+  }
+  .seed-control input,
+  .seed-control button {
+    min-height: 44px;
+  }
+}
+
+@media (hover: none) {
+  .team-card:hover,
+  .team-card.selected {
+    transform: none;
+  }
+  .move-card:hover:not(:disabled),
+  .group-tab:hover,
+  .switch-option:hover,
+  .close-btn:hover,
+  .primary-btn:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+  .primary-btn:hover:not(:disabled) {
+    filter: none;
+  }
+}
+
+@media (orientation: portrait) and (max-aspect-ratio: 1/2) {
+  .title-inner h1 {
+    font-size: clamp(62px, 18.5vw, 92px);
+  }
+  .select-head h2 {
+    font-size: 31px;
+  }
+  .tc-art {
+    height: 92px;
+  }
+  .tc-ability p {
+    display: none;
+  }
+  .battle-log {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 246px);
+  }
+  #hintBar {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 296px);
+  }
+}
+
+@media (max-width: 400px) {
+  .combatant-name {
+    font-size: 12.5px;
+  }
+  .warden-tag {
+    display: none;
+  }
+  .level {
+    font-size: 6px;
+  }
+  .type-chip {
+    padding: 1px 3px;
   }
 }
 

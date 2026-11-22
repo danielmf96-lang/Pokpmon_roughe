@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GROUPS, STATUS_INFO, TYPES } from './data.js';
 import {
-  applyStageChange, calcDamage, chooseAiMove, chooseAiSwitch, effectiveSpeed,
+  applyStageChange, calcDamage, chooseAiMove, effectiveSpeed,
 } from './battle.js';
 import { switchOptionMarkup } from './ui.js';
 
@@ -153,7 +153,7 @@ export const battleMethods = {
     const home = this.homePos(attacker);
     const targetHome = this.homePos(target);
     const dir = targetHome.clone().sub(home).setY(0).normalize();
-    const baseScale = attacker.scale;
+    const baseScale = this.creatureScale(attacker);
     const sign = side === 'player' ? 1 : -1;
     const color = TYPES[move.type].color;
 
@@ -198,7 +198,7 @@ export const battleMethods = {
     const model = this.getModel(creature);
     if (!model) return;
     const home = this.homePos(creature);
-    const baseScale = creature.scale;
+    const baseScale = this.creatureScale(creature);
     const type = TYPES[move.type];
     const targetEffects = move.effects.filter((e) => e.target === 'foe');
     const color = targetEffects.length ? TYPES[move.type].color : '#7ff0b0';
@@ -510,9 +510,10 @@ export const battleMethods = {
   },
 
   async sendNextEnemy() {
-    const next = chooseAiSwitch(this.battle.enemyTeam, this.pActive);
-    if (!next) return false;
-    const index = this.battle.enemyTeam.indexOf(next);
+    // The warden sends creatures in a fixed order: two initiates, then the ace.
+    const index = this.battle.enemyTeam.findIndex((c) => !c.fainted);
+    if (index < 0) return false;
+    const next = this.battle.enemyTeam[index];
     this.battle.enemyActive = index;
     next.stages = ZERO_STAGES();
     const model = this.enemyModels[index];
@@ -527,7 +528,7 @@ export const battleMethods = {
 
   async sendOutAnim(model, creature) {
     const home = this.homePos(creature);
-    const baseScale = creature.scale;
+    const baseScale = this.creatureScale(creature);
     model.root.visible = true;
     model.setOpacity(0);
     model.root.scale.setScalar(baseScale * 0.2);
@@ -662,7 +663,7 @@ export const battleMethods = {
       this.audio.victory();
       const model = this.getModel(this.pActive);
       if (model) {
-        const base = this.pActive.scale;
+        const base = this.creatureScale(this.pActive);
         this.tween(1.2, (p) => {
           const bounce = Math.abs(Math.sin(p * Math.PI * 3)) * (1 - p) * 0.35;
           model.root.position.y = this.homePos(this.pActive).y + bounce;
