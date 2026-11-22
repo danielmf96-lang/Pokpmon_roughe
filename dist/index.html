@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#070910" />
+    <meta
+      name="description"
+      content="Rift Champions — a procedurally generated 3D creature arena. Every room, creature and move is forged from a single seed."
+    />
+    <title>Rift Champions — Procedural Creature Arena</title>
+    <script type="module" crossorigin src="./assets/index-p82uwjmh.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B1vxC_3s.css">
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene" aria-hidden="true"></canvas>
+      <div class="screen-fx" id="vignette"></div>
+      <div class="screen-fx" id="flash"></div>
+
+      <div id="sceneLoading">
+        <div class="loader-ring"></div>
+        <span>FORGING THE RIFT</span>
+      </div>
+
+      <!-- ══════════ BATTLE HUD ══════════ -->
+      <div id="hud" class="hidden">
+        <div class="hud-top">
+          <div class="combatant enemy-panel" id="enemyPanel"></div>
+          <div class="duel-info">
+            <div class="duel-kicker">RIFT DUEL</div>
+            <div class="duel-round">ROUND <span id="roundNum">1</span></div>
+            <div class="duel-room" id="duelRoom">—</div>
+          </div>
+          <div class="combatant player-panel" id="playerPanel"></div>
+        </div>
+        <div id="battleLog" class="battle-log"></div>
+      </div>
+
+      <!-- ══════════ COMMAND DOCK ══════════ -->
+      <div id="dock" class="hidden">
+        <div class="dock-head">
+          <div class="dock-title"><span class="dock-dot"></span><span id="turnLabel">YOUR MOVE</span></div>
+          <div class="dock-tools">
+            <button class="tool-btn" id="switchBtn" title="Switch creature (B)">SWAP <kbd>B</kbd></button>
+            <button class="tool-btn" id="codexBtn" title="Open codex (C)">CODEX <kbd>C</kbd></button>
+            <button class="icon-btn" id="muteBtn" title="Toggle sound (M)" aria-label="Toggle sound">♪</button>
+          </div>
+        </div>
+        <div class="group-tabs" id="groupTabs">
+          <button class="group-tab" data-group="physical" style="--g:#ff9a62">
+            <span class="gt-icon">⚔</span><span class="gt-name">PHYSICAL</span><span class="gt-count" data-count="physical">2</span>
+          </button>
+          <button class="group-tab" data-group="special" style="--g:#b98cff">
+            <span class="gt-icon">✹</span><span class="gt-name">SPECIAL</span><span class="gt-count" data-count="special">2</span>
+          </button>
+          <button class="group-tab" data-group="status" style="--g:#56e0c0">
+            <span class="gt-icon">◉</span><span class="gt-name">STATUS</span><span class="gt-count" data-count="status">2</span>
+          </button>
+        </div>
+        <div class="move-grid" id="moveGrid"></div>
+        <div class="dock-foot">
+          <span>Pick a move or press <kbd>1</kbd><kbd>2</kbd> · Groups <kbd>Q</kbd><kbd>E</kbd></span>
+          <span id="activeSummary"></span>
+        </div>
+      </div>
+
+      <div id="floaters"></div>
+      <div id="banner" class="hidden">
+        <div class="banner-inner">
+          <div class="banner-kicker"></div>
+          <div class="banner-title"></div>
+          <div class="banner-sub"></div>
+        </div>
+      </div>
+      <div id="toast" class="hidden"></div>
+
+      <!-- ══════════ TITLE ══════════ -->
+      <section id="titleScreen" class="screen title-screen">
+        <div class="title-glow"></div>
+        <div class="title-inner">
+          <div class="eyebrow"><span></span> A PROCEDURAL CREATURE ARENA <span></span></div>
+          <h1>RIFT<span>CHAMPIONS</span></h1>
+          <p class="tagline">
+            Forge a room. Forge a creature. Forge a legacy.<br />
+            Every rift is generated from a single seed.
+          </p>
+          <div class="seed-row">
+            <label for="seedInput">RIFT SEED</label>
+            <div class="seed-control">
+              <input id="seedInput" maxlength="16" spellcheck="false" autocomplete="off" aria-label="Rift seed" />
+              <button id="diceBtn" title="Reroll seed" aria-label="Reroll seed">⟳</button>
+            </div>
+            <button id="beginBtn" class="primary-btn">ENTER THE RIFT <span>→</span></button>
+          </div>
+          <div class="feature-grid">
+            <div class="feature">
+              <div class="feature-icon">◈</div>
+              <h3>PROCEDURAL ROOM</h3>
+              <p>Pillars, runes, banners and a living portal stitched from the seed.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">✧</div>
+              <h3>PROCEDURAL CREATURES</h3>
+              <p>Six unique 3D combatants with bodies, palettes and abilities.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">⚔</div>
+              <h3>THREE MOVE GROUPS</h3>
+              <p>Physical, Special and Status — two generated moves of each.</p>
+            </div>
+          </div>
+          <div class="title-foot">
+            <span>TURN-BASED · 3v3 · TYPE RING</span>
+            <button id="howBtn" class="link-btn">HOW TO PLAY</button>
+          </div>
+        </div>
+        <div class="title-side">
+          <div class="showcase-label"><span class="live-dot"></span> LIVE GENERATION</div>
+          <div class="showcase-name" id="showcaseName">—</div>
+          <div class="showcase-meta" id="showcaseMeta">—</div>
+        </div>
+        <div class="corner-mark">RIFT ENGINE / SEED BUILD</div>
+      </section>
+
+      <!-- ══════════ TEAM SELECT ══════════ -->
+      <section id="selectScreen" class="screen select-screen hidden">
+        <div class="select-head">
+          <div>
+            <div class="eyebrow"><span></span> YOUR RIFT TRIO <span></span></div>
+            <h2>CHOOSE YOUR <em>LEAD</em></h2>
+            <p>Three creatures answered the call. The first one deployed takes the field.</p>
+          </div>
+          <div class="select-seed">
+            <span>SEED</span><strong id="selectSeed">—</strong>
+            <span>ROOM</span><strong id="selectRoom">—</strong>
+          </div>
+        </div>
+        <div class="team-cards" id="teamCards"></div>
+        <div class="select-foot">
+          <div class="warden-preview">
+            <span class="warden-label">OPPONENT</span>
+            <span class="warden-name" id="wardenName">—</span>
+            <span class="warden-sub" id="wardenSub">—</span>
+            <div class="warden-pips"><i></i><i></i><i></i></div>
+          </div>
+          <div class="select-hint">Click a creature in the room or a card below</div>
+          <button id="deployBtn" class="primary-btn" disabled>DEPLOY <span>→</span></button>
+        </div>
+      </section>
+
+      <!-- ══════════ SWITCH MODAL ══════════ -->
+      <div id="switchModal" class="modal hidden">
+        <div class="modal-card switch-card">
+          <div class="modal-head">
+            <div><span class="modal-kicker">RIFT ROTATION</span><h3>Choose a creature</h3></div>
+            <button class="close-btn" data-close="switch" aria-label="Close">✕</button>
+          </div>
+          <div class="switch-grid" id="switchGrid"></div>
+          <div class="modal-foot">
+            <span id="switchNote">Switching uses your action for the round.</span>
+            <button class="ghost-btn" id="switchCancel">CANCEL</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ CODEX MODAL ══════════ -->
+      <div id="codexModal" class="modal hidden">
+        <div class="modal-card codex-card">
+          <div class="modal-head">
+            <div><span class="modal-kicker">FIELD MANUAL</span><h3>Rift Codex</h3></div>
+            <button class="close-btn" data-close="codex" aria-label="Close">✕</button>
+          </div>
+          <div class="codex-body" id="codexBody"></div>
+        </div>
+      </div>
+
+      <!-- ══════════ END SCREEN ══════════ -->
+      <section id="endScreen" class="screen end-screen hidden">
+        <div class="end-card">
+          <div class="end-kicker" id="endKicker">RIFT CLEARED</div>
+          <h2 id="endTitle">CHAMPION</h2>
+          <p id="endText"></p>
+          <div class="end-stats" id="endStats"></div>
+          <div class="end-seed">SEED <strong id="endSeed">—</strong></div>
+          <div class="end-actions">
+            <button id="rematchBtn" class="ghost-btn">REMATCH</button>
+            <button id="newRiftBtn" class="primary-btn">NEW RIFT <span>→</span></button>
+          </div>
+        </div>
+      </section>
+
+      <div id="hintBar" class="hidden">
+        <span id="hintText"></span>
+        <button id="hintClose" aria-label="Dismiss hint">✕</button>
+      </div>
+    </div>
+  </body>
+</html>
